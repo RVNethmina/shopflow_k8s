@@ -1,5 +1,6 @@
 services:
-  postgres:
+
+  products-db:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: shopuser
@@ -8,17 +9,41 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - products_pgdata:/var/lib/postgresql/data
       - ./product-service/lib/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  orders-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: shopuser
+      POSTGRES_PASSWORD: shoppass
+      POSTGRES_DB: orders_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - orders_pgdata:/var/lib/postgresql/data
+      - ./order-service/lib/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   product-service:
     build: ./product-service
     ports:
       - "3001:3001"
     environment:
-      DATABASE_URL: postgres://shopuser:shoppass@postgres:5432/products_db
+      DATABASE_URL: postgres://shopuser:shoppass@products-db:5432/products_db
     depends_on:
-      - postgres
+      - products-db
+
+  order-service:
+    build: ./order-service
+    ports:
+      - "3002:3002"
+    environment:
+      DATABASE_URL: postgres://shopuser:shoppass@orders-db:5432/orders_db
+      PRODUCT_SERVICE_URL: http://product-service:3001
+    depends_on:
+      - orders-db
+      - product-service
 
 volumes:
-  pgdata:
+  products_pgdata:
+  orders_pgdata:
